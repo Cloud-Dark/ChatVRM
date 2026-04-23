@@ -32,7 +32,11 @@ jobs:
         run: npm ci
 
       - name: Build with Next.js
-        run: npm run build
+        run: |
+          npm run build
+          echo "Build completed"
+          ls -la
+          ls -la out || echo "out directory not found"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
