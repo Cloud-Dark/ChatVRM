@@ -7,6 +7,9 @@ const nextConfig = {
   publicRuntimeConfig: {
     root: process.env.BASE_PATH || "",
   },
+  images: {
+    domains: ["vroid-hub.pximg.net"],
+  },
 };
 
 module.exports = nextConfig;

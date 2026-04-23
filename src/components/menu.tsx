@@ -7,6 +7,7 @@ import React, { useCallback, useContext, useRef, useState, useEffect } from "rea
 import { Settings } from "./settings";
 import { ViewerContext } from "@/features/vrmViewer/viewerContext";
 import { AssistantText } from "./assistantText";
+import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
 
 type Props = {
   openAiKey: string;
@@ -16,6 +17,8 @@ type Props = {
   elevenLabsParam: ElevenLabsParam;
   koeiroParam: KoeiroParam;
   assistantMessage: string;
+  voiceProvider: "elevenlabs" | "speechSynthesis";
+  speechSynthesisParam: SpeechSynthesisParam;
   onChangeSystemPrompt: (systemPrompt: string) => void;
   onChangeAiKey: (key: string) => void;
   onChangeElevenLabsKey: (key: string) => void;
@@ -29,6 +32,8 @@ type Props = {
   onChatMessage: (message: string) => void;
   onTokensUpdate: (tokens: any) => void;
   onChangeOpenRouterKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChangeVoiceProvider: (provider: "elevenlabs" | "speechSynthesis") => void;
+  onChangeSpeechSynthesisParam: (param: SpeechSynthesisParam) => void;
   openRouterKey: string;
 };
 export const Menu = ({
@@ -40,6 +45,8 @@ export const Menu = ({
   elevenLabsParam,
   koeiroParam,
   assistantMessage,
+  voiceProvider,
+  speechSynthesisParam,
   onChangeSystemPrompt,
   onChangeAiKey,
   onChangeElevenLabsKey,
@@ -53,6 +60,8 @@ export const Menu = ({
   onChatMessage,
   onTokensUpdate,
   onChangeOpenRouterKey,
+  onChangeVoiceProvider,
+  onChangeSpeechSynthesisParam,
 }: Props) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showChatLog, setShowChatLog] = useState(false);
@@ -173,6 +182,8 @@ export const Menu = ({
           chatLog={chatLog}
           systemPrompt={systemPrompt}
           koeiroParam={koeiroParam}
+          voiceProvider={voiceProvider}
+          speechSynthesisParam={speechSynthesisParam}
           onClickClose={() => setShowSettings(false)}
           onChangeAiKey={handleAiKeyChange}
           onChangeElevenLabsKey={handleElevenLabsKeyChange}
@@ -188,6 +199,8 @@ export const Menu = ({
           onTokensUpdate={onTokensUpdate}
           onChatMessage={onChatMessage}
           onChangeOpenRouterKey={onChangeOpenRouterKey}
+          onChangeVoiceProvider={onChangeVoiceProvider}
+          onChangeSpeechSynthesisParam={onChangeSpeechSynthesisParam}
         />
       )}
       {!showChatLog && assistantMessage && (

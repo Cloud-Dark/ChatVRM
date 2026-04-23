@@ -14,6 +14,8 @@ import { getVoices } from "@/features/elevenlabs/elevenlabs";
 import { ElevenLabsParam } from "@/features/constants/elevenLabsParam";
 import { RestreamTokens } from "./restreamTokens";
 import Cookies from 'js-cookie';
+import VrmPresets from "@/features/vrmViewer/vrmPresets";
+import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
 
 type Props = {
   openAiKey: string;
@@ -23,6 +25,8 @@ type Props = {
   chatLog: Message[];
   elevenLabsParam: ElevenLabsParam;
   koeiroParam: KoeiroParam;
+  voiceProvider: "elevenlabs" | "speechSynthesis";
+  speechSynthesisParam: SpeechSynthesisParam;
   onClickClose: () => void;
   onChangeAiKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onChangeOpenRouterKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -39,6 +43,8 @@ type Props = {
   onRestreamTokensUpdate?: (tokens: { access_token: string; refresh_token: string; } | null) => void;
   onTokensUpdate: (tokens: any) => void;
   onChatMessage: (message: string) => void;
+  onChangeVoiceProvider: (provider: "elevenlabs" | "speechSynthesis") => void;
+  onChangeSpeechSynthesisParam: (param: SpeechSynthesisParam) => void;
 };
 export const Settings = ({
   openAiKey,
@@ -48,6 +54,8 @@ export const Settings = ({
   systemPrompt,
   elevenLabsParam,
   koeiroParam,
+  voiceProvider,
+  speechSynthesisParam,
   onClickClose,
   onChangeSystemPrompt,
   onChangeAiKey,
@@ -64,9 +72,12 @@ export const Settings = ({
   onRestreamTokensUpdate = () => {},
   onTokensUpdate,
   onChatMessage,
+  onChangeVoiceProvider,
+  onChangeSpeechSynthesisParam,
 }: Props) => {
 
   const [elevenLabsVoices, setElevenLabsVoices] = useState<any[]>([]);
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
     // Check if ElevenLabs API key exists before fetching voices
@@ -79,7 +90,22 @@ export const Settings = ({
         setElevenLabsVoices(voices);
       });
     }
-  }, [elevenLabsKey]); // Added elevenLabsKey as a dependency
+  }, [elevenLabsKey]);
+
+  useEffect(() => {
+    // Load browser speech synthesis voices
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setBrowserVoices(voices);
+    };
+    
+    loadVoices();
+    
+    // Voices are loaded asynchronously in some browsers
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -147,25 +173,141 @@ export const Settings = ({
           </div>
           <div className="my-40">
             <div className="my-16 typography-20 font-bold">
-              Voice Selection
+              Voice Provider
             </div>
-            <div className="my-16">
-              Select among the voices in ElevenLabs (including custom voices):
-            </div>
-            <div className="my-8">
-              <select className="h-40 px-8"
-                id="select-dropdown"
-                onChange={onChangeElevenLabsVoice}
-                value={elevenLabsParam.voiceId}
-              >
-                {elevenLabsVoices.map((voice, index) => (
-                  <option key={index} value={voice.voice_id}>
-                    {voice.name}
-                  </option>
-                ))}
-              </select>
+            <div className="my-8 flex flex-col gap-4">
+              <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
+                <input
+                  type="radio"
+                  name="voiceProvider"
+                  value="elevenlabs"
+                  checked={voiceProvider === "elevenlabs"}
+                  onChange={(e) => {
+                    onChangeVoiceProvider(e.target.value as "elevenlabs" | "speechSynthesis");
+                    localStorage.setItem('voiceProvider', e.target.value);
+                  }}
+                  className="w-16 h-16"
+                />
+                <div>
+                  <span className="font-bold">ElevenLabs</span>
+                  <div className="text-sm text-gray-600">
+                    High-quality AI voices (requires API key)
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
+                <input
+                  type="radio"
+                  name="voiceProvider"
+                  value="speechSynthesis"
+                  checked={voiceProvider === "speechSynthesis"}
+                  onChange={(e) => {
+                    onChangeVoiceProvider(e.target.value as "elevenlabs" | "speechSynthesis");
+                    localStorage.setItem('voiceProvider', e.target.value);
+                  }}
+                  className="w-16 h-16"
+                />
+                <div>
+                  <span className="font-bold">Browser Speech Synthesis</span>
+                  <div className="text-sm text-gray-600">
+                    Built-in browser voices (no API key needed)
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
+          {voiceProvider === "elevenlabs" && (
+            <div className="my-40">
+              <div className="my-16 typography-20 font-bold">
+                ElevenLabs Voice Selection
+              </div>
+              <div className="my-8">
+                <select 
+                  className="h-40 px-8 w-full"
+                  value={elevenLabsParam.voiceId}
+                  onChange={onChangeElevenLabsVoice}
+                >
+                  {elevenLabsVoices.length > 0 ? (
+                    elevenLabsVoices.map((voice, index) => (
+                      <option key={index} value={voice.voice_id}>
+                        {voice.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No voices loaded. Please enter your API key.</option>
+                  )}
+                </select>
+              </div>
+            </div>
+          )}
+          {voiceProvider === "speechSynthesis" && (
+            <div className="my-40">
+              <div className="my-16 typography-20 font-bold">
+                Browser Voice Selection
+              </div>
+              <div className="my-8">
+                <select 
+                  className="h-40 px-8 w-full"
+                  value={speechSynthesisParam.voiceName}
+                  onChange={(e) => {
+                    const newParam = {
+                      ...speechSynthesisParam,
+                      voiceName: e.target.value
+                    };
+                    onChangeSpeechSynthesisParam(newParam);
+                    localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
+                  }}
+                >
+                  <option value="">Select a voice...</option>
+                  {browserVoices.map((voice, index) => (
+                    <option key={index} value={voice.name}>
+                      {voice.name} ({voice.lang})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="my-16 flex flex-col gap-4">
+                <div>
+                  <label className="font-bold">Pitch: {speechSynthesisParam.pitch.toFixed(1)}</label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={speechSynthesisParam.pitch}
+                    onChange={(e) => {
+                      const newParam = {
+                        ...speechSynthesisParam,
+                        pitch: parseFloat(e.target.value)
+                      };
+                      onChangeSpeechSynthesisParam(newParam);
+                      localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
+                    }}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold">Speed: {speechSynthesisParam.rate.toFixed(1)}x</label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={speechSynthesisParam.rate}
+                    onChange={(e) => {
+                      const newParam = {
+                        ...speechSynthesisParam,
+                        rate: parseFloat(e.target.value)
+                      };
+                      onChangeSpeechSynthesisParam(newParam);
+                      localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
+                    }}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           <div className="my-40">
             <div className="my-16 typography-20 font-bold">
               Character Model
@@ -173,6 +315,10 @@ export const Settings = ({
             <div className="my-8">
               <TextButton onClick={onClickOpenVrmFile}>Open VRM</TextButton>
             </div>
+            <div className="my-16 typography-16 font-bold">
+              Or choose from presets:
+            </div>
+            <VrmPresets />
           </div>
           <div className="my-40">
             <div className="my-8">

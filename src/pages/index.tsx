@@ -20,6 +20,9 @@ import { ElevenLabsParam, DEFAULT_ELEVEN_LABS_PARAM } from "@/features/constants
 import { buildUrl } from "@/utils/buildUrl";
 import { websocketService } from '../services/websocketService';
 import { MessageMiddleOut } from "@/features/messages/messageMiddleOut";
+import { SpeechSynthesisParam, DEFAULT_SPEECH_SYNTHESIS_PARAM } from "@/features/constants/speechSynthesisParam";
+
+type VoiceProvider = "elevenlabs" | "speechSynthesis";
 
 const m_plus_2 = M_PLUS_2({
   variable: "--font-m-plus-2",
@@ -54,13 +57,10 @@ export default function Home() {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   // needed because AI speaking could involve multiple audios being played in sequence
   const [isAISpeaking, setIsAISpeaking] = useState(false);
-  const [openRouterKey, setOpenRouterKey] = useState<string>(() => {
-    // Try to load from localStorage on initial render
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('openRouterKey') || '';
-    }
-    return '';
-  });
+  // Default to elevenlabs on both server and client to avoid hydration mismatch
+  const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>('elevenlabs');
+  const [speechSynthesisParam, setSpeechSynthesisParam] = useState<SpeechSynthesisParam>(DEFAULT_SPEECH_SYNTHESIS_PARAM);
+  const [openRouterKey, setOpenRouterKey] = useState<string>('');
 
   useEffect(() => {
     if (window.localStorage.getItem("chatVRMParams")) {
@@ -83,6 +83,20 @@ export default function Home() {
     const savedBackground = localStorage.getItem('backgroundImage');
     if (savedBackground) {
       setBackgroundImage(savedBackground);
+    }
+    // load voice provider from localStorage
+    const savedVoiceProvider = localStorage.getItem('voiceProvider');
+    if (savedVoiceProvider) {
+      setVoiceProvider(savedVoiceProvider as VoiceProvider);
+    }
+    // load speech synthesis param from localStorage
+    const savedSpeechParam = localStorage.getItem('speechSynthesisParam');
+    if (savedSpeechParam) {
+      try {
+        setSpeechSynthesisParam(JSON.parse(savedSpeechParam));
+      } catch (e) {
+        console.error('Failed to parse speechSynthesisParam from localStorage');
+      }
     }
   }, []);
 
@@ -128,21 +142,25 @@ export default function Home() {
       screenplay: Screenplay,
       elevenLabsKey: string,
       elevenLabsParam: ElevenLabsParam,
+      voiceProvider: VoiceProvider,
+      speechSynthesisParam: SpeechSynthesisParam,
       onStart?: () => void,
       onEnd?: () => void
     ) => {
       setIsAISpeaking(true);  // Set speaking state before starting
       try {
         await speakCharacter(
-          screenplay, 
-          elevenLabsKey, 
-          elevenLabsParam, 
-          viewer, 
+          screenplay,
+          elevenLabsKey,
+          elevenLabsParam,
+          viewer,
+          voiceProvider,
+          speechSynthesisParam,
           () => {
             setIsPlayingAudio(true);
             console.log('audio playback started');
             onStart?.();
-          }, 
+          },
           () => {
             setIsPlayingAudio(false);
             console.log('audio playback completed');
@@ -257,7 +275,7 @@ export default function Home() {
 
             // 文ごとに音声を生成 & 再生、返答を表示
             const currentAssistantMessage = sentences.join(" ");
-            handleSpeakAi(aiTalks[0], elevenLabsKey, elevenLabsParam, () => {
+            handleSpeakAi(aiTalks[0], elevenLabsKey, elevenLabsParam, voiceProvider, speechSynthesisParam, () => {
               setAssistantMessage(currentAssistantMessage);
             });
           }
@@ -278,7 +296,7 @@ export default function Home() {
       setChatLog(messageLogAssistant);
       setChatProcessing(false);
     },
-    [systemPrompt, chatLog, handleSpeakAi, openAiKey, elevenLabsKey, elevenLabsParam, openRouterKey]
+    [systemPrompt, chatLog, handleSpeakAi, openAiKey, elevenLabsKey, elevenLabsParam, openRouterKey, voiceProvider]
   );
 
   const handleTokensUpdate = useCallback((tokens: any) => {
@@ -317,6 +335,21 @@ export default function Home() {
     localStorage.setItem('openRouterKey', newKey);
   };
 
+  const handleElevenLabsVoiceChange = useCallback(
+    (voiceId: string) => {
+      setElevenLabsParam({ voiceId });
+    },
+    []
+  );
+
+  const handleSpeechSynthesisParamChange = useCallback(
+    (param: SpeechSynthesisParam) => {
+      setSpeechSynthesisParam(param);
+      localStorage.setItem('speechSynthesisParam', JSON.stringify(param));
+    },
+    []
+  );
+
   return (
     <div className={`${m_plus_2.variable} ${montserrat.variable}`}>
       <Meta />
@@ -325,6 +358,12 @@ export default function Home() {
         onChangeAiKey={setOpenAiKey}
         elevenLabsKey={elevenLabsKey}
         onChangeElevenLabsKey={setElevenLabsKey}
+        voiceProvider={voiceProvider}
+        onChangeVoiceProvider={setVoiceProvider}
+        elevenLabsParam={elevenLabsParam}
+        onChangeElevenLabsVoice={handleElevenLabsVoiceChange}
+        speechSynthesisParam={speechSynthesisParam}
+        onChangeSpeechSynthesisParam={handleSpeechSynthesisParamChange}
       />
       <VrmViewer />
       <MessageInputContainer
@@ -340,6 +379,8 @@ export default function Home() {
         elevenLabsParam={elevenLabsParam}
         koeiroParam={koeiroParam}
         assistantMessage={assistantMessage}
+        voiceProvider={voiceProvider}
+        speechSynthesisParam={speechSynthesisParam}
         onChangeAiKey={setOpenAiKey}
         onChangeElevenLabsKey={setElevenLabsKey}
         onChangeSystemPrompt={setSystemPrompt}
@@ -353,6 +394,8 @@ export default function Home() {
         onTokensUpdate={handleTokensUpdate}
         onChatMessage={handleSendChat}
         onChangeOpenRouterKey={handleOpenRouterKeyChange}
+        onChangeVoiceProvider={setVoiceProvider}
+        onChangeSpeechSynthesisParam={setSpeechSynthesisParam}
       />
       <GitHubLink />
     </div>
