@@ -16,6 +16,7 @@ import { RestreamTokens } from "./restreamTokens";
 import Cookies from 'js-cookie';
 import VrmPresets from "@/features/vrmViewer/vrmPresets";
 import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
+import { Select2Dropdown } from "./select2Dropdown";
 
 type Props = {
   openAiKey: string;
@@ -222,21 +223,19 @@ export const Settings = ({
                 ElevenLabs Voice Selection
               </div>
               <div className="my-8">
-                <select 
-                  className="h-40 px-8 w-full"
+                <Select2Dropdown
+                  options={elevenLabsVoices.map((voice) => ({
+                    id: voice.voice_id,
+                    text: voice.name,
+                  }))}
                   value={elevenLabsParam.voiceId}
-                  onChange={onChangeElevenLabsVoice}
-                >
-                  {elevenLabsVoices.length > 0 ? (
-                    elevenLabsVoices.map((voice, index) => (
-                      <option key={index} value={voice.voice_id}>
-                        {voice.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No voices loaded. Please enter your API key.</option>
-                  )}
-                </select>
+                  onChange={(voiceId: string) => {
+                    const event = { target: { value: voiceId } } as React.ChangeEvent<HTMLSelectElement>;
+                    onChangeElevenLabsVoice(event);
+                  }}
+                  placeholder={elevenLabsVoices.length > 0 ? "Search and select a voice..." : "No voices loaded. Please enter your API key."}
+                  disabled={elevenLabsVoices.length === 0}
+                />
               </div>
             </div>
           )}
@@ -246,25 +245,22 @@ export const Settings = ({
                 Browser Voice Selection
               </div>
               <div className="my-8">
-                <select 
-                  className="h-40 px-8 w-full"
+                <Select2Dropdown
+                  options={browserVoices.map((voice) => ({
+                    id: voice.name,
+                    text: `${voice.name} (${voice.lang})`,
+                  }))}
                   value={speechSynthesisParam.voiceName}
-                  onChange={(e) => {
+                  onChange={(voiceName) => {
                     const newParam = {
                       ...speechSynthesisParam,
-                      voiceName: e.target.value
+                      voiceName
                     };
                     onChangeSpeechSynthesisParam(newParam);
                     localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
                   }}
-                >
-                  <option value="">Select a voice...</option>
-                  {browserVoices.map((voice, index) => (
-                    <option key={index} value={voice.name}>
-                      {voice.name} ({voice.lang})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search and select a voice..."
+                />
               </div>
               <div className="my-16 flex flex-col gap-4">
                 <div>

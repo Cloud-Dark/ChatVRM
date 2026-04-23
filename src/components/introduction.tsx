@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Link } from "./link";
 import { SpeechSynthesisParam, DEFAULT_SPEECH_SYNTHESIS_PARAM } from "@/features/constants/speechSynthesisParam";
+import { Select2Dropdown } from "./select2Dropdown";
 
 type VoiceProvider = "elevenlabs" | "speechSynthesis";
 
@@ -201,17 +202,15 @@ export const Introduction = ({
             {elevenLabsKey && elevenLabsVoices.length > 0 && (
               <div className="my-16">
                 <div className="my-8 font-bold typography-16">Select Voice</div>
-                <select
-                  className="h-40 px-8 w-full bg-surface3 rounded-4"
+                <Select2Dropdown
+                  options={elevenLabsVoices.map((voice) => ({
+                    id: voice.voice_id,
+                    text: voice.name,
+                  }))}
                   value={elevenLabsParam.voiceId}
-                  onChange={(e) => onChangeElevenLabsVoice(e.target.value)}
-                >
-                  {elevenLabsVoices.map((voice) => (
-                    <option key={voice.voice_id} value={voice.voice_id}>
-                      {voice.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={onChangeElevenLabsVoice}
+                  placeholder="Search and select a voice..."
+                />
               </div>
             )}
           </div>
@@ -232,24 +231,21 @@ export const Introduction = ({
             {browserVoices.length > 0 && (
               <div className="my-16">
                 <div className="my-8 font-bold typography-16">Select Voice</div>
-                <select
-                  className="h-40 px-8 w-full bg-surface3 rounded-4"
+                <Select2Dropdown
+                  options={browserVoices.map((voice) => ({
+                    id: voice.name,
+                    text: `${voice.name} (${voice.lang})`,
+                  }))}
                   value={speechSynthesisParam.voiceName}
-                  onChange={(e) => {
+                  onChange={(voiceName) => {
                     const newParam = {
                       ...speechSynthesisParam,
-                      voiceName: e.target.value
+                      voiceName
                     };
                     onChangeSpeechSynthesisParam(newParam);
                   }}
-                >
-                  <option value="">Select a voice...</option>
-                  {browserVoices.map((voice) => (
-                    <option key={voice.name} value={voice.name}>
-                      {voice.name} ({voice.lang})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search and select a voice..."
+                />
               </div>
             )}
             
