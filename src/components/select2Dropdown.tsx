@@ -1,6 +1,6 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
-import $ from "jquery";
-import "select2";
 
 type Select2Option = {
   id: string;
@@ -27,53 +27,73 @@ export const Select2Dropdown = ({
 }: Props) => {
   const selectRef = useRef<HTMLSelectElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [select2Instance, setSelect2Instance] = useState<any>(null);
 
+  // Initialize Select2 only on client side
   useEffect(() => {
-    if (!selectRef.current) return;
-
-    // Initialize Select2
-    const $select = $(selectRef.current) as any;
-    $select.select2({
-      placeholder: placeholder,
-      allowClear: true,
-      width: "100%",
-      data: options,
-    });
-
-    // Set initial value
-    if (value) {
-      $select.val(value);
+    if (typeof window === "undefined") return;
+    
+    // Load Select2 CSS if not already loaded
+    if (!document.getElementById("select2-css")) {
+      const link = document.createElement("link");
+      link.id = "select2-css";
+      link.rel = "stylesheet";
+      link.href = "https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css";
+      document.head.appendChild(link);
     }
+    
+    // Dynamically import jQuery and Select2 on client side only
+    const initSelect2 = async () => {
+      const $ = (await import("jquery")).default;
+      await import("select2");
 
-    // Handle change event
-    $select.on("change", () => {
-      const selectedValue = $select.val() as string;
-      onChange(selectedValue);
-    });
+      if (!selectRef.current) return;
 
-    setIsInitialized(true);
+      const $select = $(selectRef.current);
+      $select.select2({
+        placeholder: placeholder,
+        allowClear: true,
+        width: "100%",
+        data: options,
+      });
 
-    // Cleanup
+      if (value) {
+        $select.val(value);
+      }
+
+      $select.on("change.select2", () => {
+        const selectedValue = $select.val() as string;
+        onChange(selectedValue);
+      });
+
+      setSelect2Instance($select);
+      setIsInitialized(true);
+    };
+
+    initSelect2();
+
     return () => {
-      if (selectRef.current) {
-        const $el = $(selectRef.current) as any;
+      if (selectRef.current && select2Instance) {
+        const $ = require("jquery");
+        const $el = $(selectRef.current);
         if ($el.data("select2")) {
           $el.select2("destroy");
         }
+        $el.off("change.select2");
       }
     };
   }, []);
 
   // Update options when they change
   useEffect(() => {
-    if (!isInitialized || !selectRef.current) return;
+    if (!isInitialized || !selectRef.current || !select2Instance) return;
 
-    const $select = $(selectRef.current) as any;
-    const select2Instance = $select.data("select2");
+    const $select = select2Instance;
+    const select2Data = $select.data("select2");
     
-    if (select2Instance) {
+    if (select2Data) {
       // Update the data
-      select2Instance.data.options.data = options;
+      select2Data.data.options.data = options;
       
       // Clear and repopulate
       $select.empty();
@@ -86,28 +106,28 @@ export const Select2Dropdown = ({
       
       $select.trigger("change");
     }
-  }, [options, isInitialized, value]);
+  }, [options, isInitialized, select2Instance, value]);
 
   // Update value when it changes externally
   useEffect(() => {
-    if (!isInitialized || !selectRef.current) return;
+    if (!isInitialized || !selectRef.current || !select2Instance) return;
     
-    const $select = $(selectRef.current) as any;
+    const $select = select2Instance;
     const currentValue = $select.val();
     
     if (currentValue !== value) {
       $select.val(value).trigger("change");
     }
-  }, [value, isInitialized]);
+  }, [value, isInitialized, select2Instance]);
 
   // Handle disabled state
   useEffect(() => {
-    if (!isInitialized || !selectRef.current) return;
+    if (!isInitialized || !selectRef.current || !select2Instance) return;
     
-    const $select = $(selectRef.current) as any;
+    const $select = select2Instance;
     $select.prop("disabled", disabled);
     $select.trigger("change");
-  }, [disabled, isInitialized]);
+  }, [disabled, isInitialized, select2Instance]);
 
   return (
     <select

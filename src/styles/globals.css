@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "~select2/dist/css/select2.min.css";
-
 body {
   background-position: top center;
   background-attachment: fixed;
