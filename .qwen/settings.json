@@ -6,7 +6,8 @@
       "Bash(npx *)",
       "Bash(git restore *)",
       "Bash(git commit *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git push)"
     ]
   },
   "$version": 3
