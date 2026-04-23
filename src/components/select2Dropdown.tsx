@@ -89,24 +89,22 @@ export const Select2Dropdown = ({
     if (!isInitialized || !selectRef.current || !select2Instance) return;
 
     const $select = select2Instance;
-    const select2Data = $select.data("select2");
     
-    if (select2Data) {
-      // Update the data
-      select2Data.data.options.data = options;
-      
-      // Clear and repopulate
-      $select.empty();
-      $select.append(new Option("", "", true, !value));
-      
-      options.forEach((option) => {
-        const optionEl = new Option(option.text, option.id, false, option.id === value);
-        $select.append(optionEl);
-      });
-      
-      $select.trigger("change");
+    // Destroy and reinitialize with new options
+    if ($select.data("select2")) {
+      $select.select2("destroy");
     }
-  }, [options, isInitialized, select2Instance, value]);
+    
+    $select.select2({
+      placeholder: placeholder,
+      allowClear: true,
+      width: "100%",
+      data: options,
+    });
+    
+    $select.val(value);
+    $select.trigger("change");
+  }, [options, isInitialized, select2Instance, value, placeholder]);
 
   // Update value when it changes externally
   useEffect(() => {
