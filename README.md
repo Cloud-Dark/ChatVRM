@@ -1,8 +1,8 @@
 # ChatVRM
 
-<img src="https://github.com/zoan37/ChatVRM/blob/9d50c106cb971e9ef53cfff22e6ea9d75d61fe69/public/ogp-en.png" width="600">
+<img src="https://github.com/Cloud-Dark/ChatVRM/blob/9d50c106cb971e9ef53cfff22e6ea9d75d61fe69/public/ogp-en.png" width="600">
 
-[This repo was cloned from [ChatVRM-jp](https://github.com/zoan37/ChatVRM-jp), which is a fork of [@pixiv/ChatVRM](https://github.com/pixiv/ChatVRM).]
+[This repo was cloned from [ChatVRM-jp](https://github.com/Cloud-Dark/ChatVRM-jp), which is a fork of [@pixiv/ChatVRM](https://github.com/pixiv/ChatVRM).]
 
 ChatVRM is a demo application that allows you to easily talk with a 3D character in your browser.
 
@@ -31,7 +31,7 @@ A demo is available at Vercel.
 Clone or download this repository to run locally.
 
 ```bash
-git clone https://github.com/zoan37/ChatVRM.git
+git clone https://github.com/Cloud-Dark/ChatVRM.git
 ```
 
 Please install the required packages.

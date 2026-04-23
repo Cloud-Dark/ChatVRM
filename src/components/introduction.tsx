@@ -120,8 +120,8 @@ export const Introduction = ({
             <br />
             Repository:
             &nbsp;<Link
-              url={"https://github.com/zoan37/ChatVRM"}
-              label={"https://github.com/zoan37/ChatVRM"}
+              url={"https://github.com/Cloud-Dark/ChatVRM"}
+              label={"https://github.com/Cloud-Dark/ChatVRM"}
             />
           </div>
         </div>
