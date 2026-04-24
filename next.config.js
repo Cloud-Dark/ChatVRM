@@ -1,13 +1,20 @@
 /** @type {import('next').NextConfig} */
+const basePath = process.env.BASE_PATH || "";
+const isStaticExport = Boolean(basePath);
+
 const nextConfig = {
   reactStrictMode: true,
-  assetPrefix: process.env.BASE_PATH || "/ChatVRM/",
-  basePath: process.env.BASE_PATH || "/ChatVRM",
-  trailingSlash: true,
-  publicRuntimeConfig: {
-    root: process.env.BASE_PATH || "/ChatVRM",
+  ...(basePath
+    ? {
+        assetPrefix: `${basePath}/`,
+        basePath,
+        trailingSlash: true,
+      }
+    : {}),
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
-  output: "export",
+  ...(isStaticExport ? { output: "export" } : {}),
   images: {
     unoptimized: true,
     domains: ["vroid-hub.pximg.net"],
