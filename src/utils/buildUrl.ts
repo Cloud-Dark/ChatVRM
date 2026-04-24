@@ -1,3 +1,3 @@
 export function buildUrl(path: string): string {
-  return `${process.env.NEXT_PUBLIC_BASE_PATH || ""}${path}`;
+  return path;
 }

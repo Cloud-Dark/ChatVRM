@@ -53,13 +53,13 @@ export const MessageInput = ({
         </div>
         <div className="py-4 bg-[#413D43] text-center text-white font-Montserrat">
           powered by&nbsp;
-          <a target="_blank" href="https://openrouter.ai/" className="underline">
-            OpenRouter
+          <a target="_blank" href="https://openrouter.ai/" className="underline" rel="noreferrer">
+            OpenRouter / APIPedia
           </a>,&nbsp;
-          <a target="_blank" href="https://beta.elevenlabs.io/" className="underline">
+          <a target="_blank" href="https://beta.elevenlabs.io/" className="underline" rel="noreferrer">
             ElevenLabs
           </a>,&nbsp;
-          <a target="_blank" href="https://vroid.com/" className="underline">
+          <a target="_blank" href="https://vroid.com/" className="underline" rel="noreferrer">
             VRoid
           </a>
         </div>

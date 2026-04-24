@@ -1,25 +1,24 @@
-import React, { useEffect, useState, cache } from "react";
+import React, { useEffect, useState } from "react";
 import { IconButton } from "./iconButton";
 import { TextButton } from "./textButton";
 import { Message } from "@/features/messages/messages";
-import {
-  KoeiroParam,
-  PRESET_A,
-  PRESET_B,
-  PRESET_C,
-  PRESET_D,
-} from "@/features/constants/koeiroParam";
+import { KoeiroParam } from "@/features/constants/koeiroParam";
 import { Link } from "./link";
 import { getVoices } from "@/features/elevenlabs/elevenlabs";
 import { ElevenLabsParam } from "@/features/constants/elevenLabsParam";
 import { RestreamTokens } from "./restreamTokens";
-import Cookies from 'js-cookie';
 import VrmPresets from "@/features/vrmViewer/vrmPresets";
 import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
-import { Select2Dropdown } from "./select2Dropdown";
+import {
+  AIProvider,
+  DEFAULT_APIPEDIA_MODEL,
+  DEFAULT_OPENROUTER_MODEL,
+} from "@/features/chat/providers";
 
 type Props = {
-  openAiKey: string;
+  aiProvider: AIProvider;
+  llmApiKey: string;
+  llmModel: string;
   elevenLabsKey: string;
   openRouterKey: string;
   systemPrompt: string;
@@ -29,7 +28,9 @@ type Props = {
   voiceProvider: "elevenlabs" | "speechSynthesis";
   speechSynthesisParam: SpeechSynthesisParam;
   onClickClose: () => void;
-  onChangeAiKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChangeAiProvider: (provider: AIProvider) => void;
+  onChangeLlmApiKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChangeLlmModel: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onChangeOpenRouterKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onChangeElevenLabsKey: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onChangeElevenLabsVoice: (event: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -41,68 +42,64 @@ type Props = {
   onClickResetSystemPrompt: () => void;
   backgroundImage: string;
   onChangeBackgroundImage: (image: string) => void;
-  onRestreamTokensUpdate?: (tokens: { access_token: string; refresh_token: string; } | null) => void;
+  onRestreamTokensUpdate?: (tokens: { access_token: string; refresh_token: string } | null) => void;
   onTokensUpdate: (tokens: any) => void;
   onChatMessage: (message: string) => void;
   onChangeVoiceProvider: (provider: "elevenlabs" | "speechSynthesis") => void;
   onChangeSpeechSynthesisParam: (param: SpeechSynthesisParam) => void;
 };
+
 export const Settings = ({
-  openAiKey,
+  aiProvider,
+  llmApiKey,
+  llmModel,
   elevenLabsKey,
-  openRouterKey,
   chatLog,
   systemPrompt,
   elevenLabsParam,
-  koeiroParam,
   voiceProvider,
   speechSynthesisParam,
   onClickClose,
-  onChangeSystemPrompt,
-  onChangeAiKey,
-  onChangeOpenRouterKey,
+  onChangeAiProvider,
+  onChangeLlmApiKey,
+  onChangeLlmModel,
   onChangeElevenLabsKey,
   onChangeElevenLabsVoice,
+  onChangeSystemPrompt,
   onChangeChatLog,
-  onChangeKoeiroParam,
   onClickOpenVrmFile,
   onClickResetChatLog,
   onClickResetSystemPrompt,
   backgroundImage,
   onChangeBackgroundImage,
-  onRestreamTokensUpdate = () => {},
   onTokensUpdate,
   onChatMessage,
   onChangeVoiceProvider,
   onChangeSpeechSynthesisParam,
 }: Props) => {
-
   const [elevenLabsVoices, setElevenLabsVoices] = useState<any[]>([]);
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
-    // Check if ElevenLabs API key exists before fetching voices
     if (elevenLabsKey) {
-      getVoices(elevenLabsKey).then((data) => {
-        console.log('getVoices');
-        console.log(data);
-
-        const voices = data.voices;
-        setElevenLabsVoices(voices);
-      });
+      getVoices(elevenLabsKey)
+        .then((data) => {
+          if (data.voices) setElevenLabsVoices(data.voices);
+        })
+        .catch((error) => {
+          console.error("Failed to load ElevenLabs voices:", error);
+          setElevenLabsVoices([]);
+        });
+    } else {
+        setElevenLabsVoices([]);
     }
   }, [elevenLabsKey]);
 
   useEffect(() => {
-    // Load browser speech synthesis voices
     const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      setBrowserVoices(voices);
+      setBrowserVoices(window.speechSynthesis.getVoices());
     };
-    
     loadVoices();
-    
-    // Voices are loaded asynchronously in some browsers
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
@@ -115,19 +112,17 @@ export const Settings = ({
       reader.onloadend = () => {
         const base64String = reader.result as string;
         onChangeBackgroundImage(base64String);
-        localStorage.setItem('backgroundImage', base64String);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveBackground = () => {
-    onChangeBackgroundImage('');
-    localStorage.removeItem('backgroundImage');
+    onChangeBackgroundImage("");
   };
 
   return (
-    <div className="absolute z-40 w-full h-full bg-white/80 backdrop-blur ">
+    <div className="absolute z-40 w-full h-full bg-white/80 backdrop-blur">
       <div className="absolute m-24">
         <IconButton
           iconName="24/Close"
@@ -136,206 +131,163 @@ export const Settings = ({
         ></IconButton>
       </div>
       <div className="max-h-full overflow-auto">
-        <div className="text-text1 max-w-3xl mx-auto px-24 py-64 ">
+        <div className="text-text1 max-w-3xl mx-auto px-24 py-64">
           <div className="my-24 typography-32 font-bold">Settings</div>
+          
           <div className="my-24">
-            <div className="my-16 typography-20 font-bold">OpenRouter API</div>
-            <input
-              type="text"
-              placeholder="OpenRouter API key"
-              value={openRouterKey}
-              onChange={onChangeOpenRouterKey}
-              className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-            ></input>
-            <div>
-              Enter your OpenRouter API key for custom access. You can get an API key at the&nbsp;
-              <Link
-                url="https://openrouter.ai/"
-                label="OpenRouter website"
-              />. By default, this app uses its own OpenRouter API key for people to try things out easily, but that may run of credits and need to be refilled.
+            <div className="my-16 typography-20 font-bold">AI Provider</div>
+            <div className="my-8 flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
+                  checked={aiProvider === "openrouter"}
+                  onChange={() => onChangeAiProvider("openrouter")}
+                />
+                <span>OpenRouter</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer ml-16">
+                <input 
+                  type="radio" 
+                  checked={aiProvider === "apipedia"}
+                  onChange={() => onChangeAiProvider("apipedia")}
+                />
+                <span>APIPedia</span>
+              </label>
+            </div>
+            
+            <div className="my-16">
+              <div className="font-bold mb-4">LLM API Key</div>
+              <input
+                type="text"
+                placeholder={aiProvider === "apipedia" ? "APIPedia API key" : "OpenRouter API key"}
+                value={llmApiKey}
+                onChange={onChangeLlmApiKey}
+                className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+              />
+            </div>
+
+            <div className="my-16">
+              <div className="font-bold mb-4">LLM Model</div>
+              <input
+                type="text"
+                placeholder={aiProvider === "apipedia" ? DEFAULT_APIPEDIA_MODEL : DEFAULT_OPENROUTER_MODEL}
+                value={llmModel}
+                onChange={onChangeLlmModel}
+                className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis font-mono"
+              />
             </div>
           </div>
-          <div className="my-24">
-            <div className="my-16 typography-20 font-bold">Eleven Labs API</div>
-            <input
-              type="text"
-              placeholder="ElevenLabs API key"
-              value={elevenLabsKey}
-              onChange={onChangeElevenLabsKey}
-              className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-            ></input>
-            <div>
-              Enter your ElevenLabs API key to enable text to speech. You can get an API key at the&nbsp;
-              <Link
-                url="https://beta.elevenlabs.io/"
-                label="ElevenLabs website"
-              />.
-            </div>
-          </div>
+
           <div className="my-40">
-            <div className="my-16 typography-20 font-bold">
-              Voice Provider
-            </div>
-            <div className="my-8 flex flex-col gap-4">
-              <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
-                <input
-                  type="radio"
-                  name="voiceProvider"
-                  value="elevenlabs"
+            <div className="my-16 typography-20 font-bold">Voice Provider</div>
+            <div className="my-8 flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
                   checked={voiceProvider === "elevenlabs"}
-                  onChange={(e) => {
-                    onChangeVoiceProvider(e.target.value as "elevenlabs" | "speechSynthesis");
-                    localStorage.setItem('voiceProvider', e.target.value);
-                  }}
-                  className="w-16 h-16"
+                  onChange={() => onChangeVoiceProvider("elevenlabs")}
                 />
-                <div>
-                  <span className="font-bold">ElevenLabs</span>
-                  <div className="text-sm text-gray-600">
-                    High-quality AI voices (requires API key)
-                  </div>
-                </div>
+                <span>ElevenLabs</span>
               </label>
-              <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
-                <input
-                  type="radio"
-                  name="voiceProvider"
-                  value="speechSynthesis"
+              <label className="flex items-center gap-2 cursor-pointer ml-16">
+                <input 
+                  type="radio" 
                   checked={voiceProvider === "speechSynthesis"}
-                  onChange={(e) => {
-                    onChangeVoiceProvider(e.target.value as "elevenlabs" | "speechSynthesis");
-                    localStorage.setItem('voiceProvider', e.target.value);
-                  }}
-                  className="w-16 h-16"
+                  onChange={() => onChangeVoiceProvider("speechSynthesis")}
                 />
-                <div>
-                  <span className="font-bold">Browser Speech Synthesis</span>
-                  <div className="text-sm text-gray-600">
-                    Built-in browser voices (no API key needed)
-                  </div>
-                </div>
+                <span>Browser Speech Synthesis</span>
               </label>
             </div>
+
+            {voiceProvider === "elevenlabs" ? (
+              <>
+                <div className="my-16">
+                   <div className="font-bold mb-4">ElevenLabs API Key</div>
+                   <input
+                     type="text"
+                     placeholder="ElevenLabs API key"
+                     value={elevenLabsKey}
+                     onChange={onChangeElevenLabsKey}
+                     className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+                   />
+                </div>
+                <div className="my-16">
+                   <div className="font-bold mb-4">Voice</div>
+                   <select 
+                     className="h-40 px-8 w-full bg-surface3 hover:bg-surface3-hover rounded-4"
+                     value={elevenLabsParam.voiceId}
+                     onChange={onChangeElevenLabsVoice}
+                   >
+                     <option value="">Pilih voice...</option>
+                     {elevenLabsVoices.map((v) => (
+                       <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                     ))}
+                   </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="my-16">
+                   <div className="font-bold mb-4">Browser Voice</div>
+                   <select 
+                     className="h-40 px-8 w-full bg-surface3 hover:bg-surface3-hover rounded-4"
+                     value={speechSynthesisParam.voiceName}
+                     onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, voiceName: e.target.value })}
+                   >
+                     <option value="">Pilih voice browser...</option>
+                     {browserVoices.map((v) => (
+                       <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                     ))}
+                   </select>
+                </div>
+                <div className="my-16">
+                   <div className="font-bold mb-4">Pitch ({speechSynthesisParam.pitch.toFixed(1)})</div>
+                   <input
+                     type="range"
+                     min="0.5" max="2" step="0.1"
+                     value={speechSynthesisParam.pitch}
+                     onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, pitch: parseFloat(e.target.value) })}
+                     className="w-full"
+                   />
+                </div>
+                <div className="my-16">
+                   <div className="font-bold mb-4">Speed ({speechSynthesisParam.rate.toFixed(1)}x)</div>
+                   <input
+                     type="range"
+                     min="0.5" max="2" step="0.1"
+                     value={speechSynthesisParam.rate}
+                     onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, rate: parseFloat(e.target.value) })}
+                     className="w-full"
+                   />
+                </div>
+              </>
+            )}
           </div>
-          {voiceProvider === "elevenlabs" && (
-            <div className="my-40">
-              <div className="my-16 typography-20 font-bold">
-                ElevenLabs Voice Selection
-              </div>
-              <div className="my-8">
-                <Select2Dropdown
-                  options={elevenLabsVoices.map((voice) => ({
-                    id: voice.voice_id,
-                    text: voice.name,
-                  }))}
-                  value={elevenLabsParam.voiceId}
-                  onChange={(voiceId: string) => {
-                    const event = { target: { value: voiceId } } as React.ChangeEvent<HTMLSelectElement>;
-                    onChangeElevenLabsVoice(event);
-                  }}
-                  placeholder={elevenLabsVoices.length > 0 ? "Search and select a voice..." : "No voices loaded. Please enter your API key."}
-                  disabled={elevenLabsVoices.length === 0}
-                />
-              </div>
-            </div>
-          )}
-          {voiceProvider === "speechSynthesis" && (
-            <div className="my-40">
-              <div className="my-16 typography-20 font-bold">
-                Browser Voice Selection
-              </div>
-              <div className="my-8">
-                <Select2Dropdown
-                  options={browserVoices.map((voice) => ({
-                    id: voice.name,
-                    text: `${voice.name} (${voice.lang})`,
-                  }))}
-                  value={speechSynthesisParam.voiceName}
-                  onChange={(voiceName) => {
-                    const newParam = {
-                      ...speechSynthesisParam,
-                      voiceName
-                    };
-                    onChangeSpeechSynthesisParam(newParam);
-                    localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
-                  }}
-                  placeholder="Search and select a voice..."
-                />
-              </div>
-              <div className="my-16 flex flex-col gap-4">
-                <div>
-                  <label className="font-bold">Pitch: {speechSynthesisParam.pitch.toFixed(1)}</label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={speechSynthesisParam.pitch}
-                    onChange={(e) => {
-                      const newParam = {
-                        ...speechSynthesisParam,
-                        pitch: parseFloat(e.target.value)
-                      };
-                      onChangeSpeechSynthesisParam(newParam);
-                      localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
-                    }}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold">Speed: {speechSynthesisParam.rate.toFixed(1)}x</label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={speechSynthesisParam.rate}
-                    onChange={(e) => {
-                      const newParam = {
-                        ...speechSynthesisParam,
-                        rate: parseFloat(e.target.value)
-                      };
-                      onChangeSpeechSynthesisParam(newParam);
-                      localStorage.setItem('speechSynthesisParam', JSON.stringify(newParam));
-                    }}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+
           <div className="my-40">
-            <div className="my-16 typography-20 font-bold">
-              Character Model
-            </div>
+            <div className="my-16 typography-20 font-bold">Character Model</div>
             <div className="my-8">
               <TextButton onClick={onClickOpenVrmFile}>Open VRM</TextButton>
             </div>
-            <div className="my-16 typography-16 font-bold">
-              Or choose from presets:
+            <div className="my-8">
+               <VrmPresets />
             </div>
-            <VrmPresets />
           </div>
+
           <div className="my-40">
             <div className="my-8">
-              <div className="my-16 typography-20 font-bold">
-                Character Settings (System Prompt)
-              </div>
-              <TextButton onClick={onClickResetSystemPrompt}>
-                Reset character settings
-              </TextButton>
+              <div className="my-16 typography-20 font-bold">Character Settings (System Prompt)</div>
+              <TextButton onClick={onClickResetSystemPrompt}>Reset character settings</TextButton>
             </div>
-
             <textarea
               value={systemPrompt}
               onChange={onChangeSystemPrompt}
-              className="px-16 py-8  bg-surface1 hover:bg-surface1-hover h-168 rounded-8 w-full"
+              className="px-16 py-8 bg-surface1 hover:bg-surface1-hover h-168 rounded-8 w-full font-mono text-sm"
             ></textarea>
           </div>
+
           <div className="my-40">
-            <div className="my-16 typography-20 font-bold">
-              Background Image
-            </div>
+            <div className="my-16 typography-20 font-bold">Background Image</div>
             <div className="my-16">Choose a custom background image:</div>
             <div className="my-8 flex flex-col gap-4">
               <input
@@ -354,48 +306,38 @@ export const Settings = ({
                     />
                   </div>
                   <div className="my-8">
-                    <TextButton onClick={handleRemoveBackground}>
-                      Remove Background
-                    </TextButton>
+                    <TextButton onClick={handleRemoveBackground}>Remove Background</TextButton>
                   </div>
                 </div>
               )}
-              <div className="text-sm text-gray-600">
-                The background image will be saved in your browser and restored when you return.
-              </div>
             </div>
           </div>
+
           <RestreamTokens onTokensUpdate={onTokensUpdate} onChatMessage={onChatMessage} />
+
           {chatLog.length > 0 && (
             <div className="my-40">
               <div className="my-8 grid-cols-2">
                 <div className="my-16 typography-20 font-bold">Conversation History</div>
-                <TextButton onClick={onClickResetChatLog}>
-                  Reset conversation history
-                </TextButton>
+                <TextButton onClick={onClickResetChatLog}>Reset conversation history</TextButton>
               </div>
               <div className="my-8">
-                {chatLog.map((value, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="my-8 grid grid-flow-col  grid-cols-[min-content_1fr] gap-x-fixed"
-                    >
-                      <div className="w-[64px] py-8">
-                        {value.role === "assistant" ? "Character" : "You"}
-                      </div>
-                      <input
-                        key={index}
-                        className="bg-surface1 hover:bg-surface1-hover rounded-8 w-full px-16 py-8"
-                        type="text"
-                        value={value.content}
-                        onChange={(event) => {
-                          onChangeChatLog(index, event.target.value);
-                        }}
-                      ></input>
+                {chatLog.map((value, index) => (
+                  <div
+                    key={index}
+                    className="my-8 grid grid-flow-col grid-cols-[min-content_1fr] gap-x-fixed"
+                  >
+                    <div className="w-[64px] py-8 font-bold text-gray-500 text-sm">
+                      {value.role === "assistant" ? "Character" : "You"}
                     </div>
-                  );
-                })}
+                    <input
+                      className="bg-surface1 hover:bg-surface1-hover rounded-8 w-full px-16 py-8"
+                      type="text"
+                      value={value.content}
+                      onChange={(event) => onChangeChatLog(index, event.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           )}

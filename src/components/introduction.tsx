@@ -1,299 +1,267 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "./link";
-import { SpeechSynthesisParam, DEFAULT_SPEECH_SYNTHESIS_PARAM } from "@/features/constants/speechSynthesisParam";
-import { Select2Dropdown } from "./select2Dropdown";
+import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
+import {
+  AIProvider,
+  DEFAULT_APIPEDIA_MODEL,
+  DEFAULT_OPENROUTER_MODEL,
+} from "@/features/chat/providers";
 
 type VoiceProvider = "elevenlabs" | "speechSynthesis";
 
 type Props = {
-  openAiKey: string;
+  aiProvider: AIProvider;
+  llmApiKey: string;
+  llmModel: string;
   elevenLabsKey: string;
   voiceProvider: VoiceProvider;
   elevenLabsParam: { voiceId: string };
   speechSynthesisParam: SpeechSynthesisParam;
-  onChangeAiKey: (openAiKey: string) => void;
+  onChangeAiProvider: (provider: AIProvider) => void;
+  onChangeLlmApiKey: (value: string) => void;
+  onChangeLlmModel: (model: string) => void;
   onChangeElevenLabsKey: (elevenLabsKey: string) => void;
   onChangeVoiceProvider: (provider: VoiceProvider) => void;
   onChangeElevenLabsVoice: (voiceId: string) => void;
   onChangeSpeechSynthesisParam: (param: SpeechSynthesisParam) => void;
 };
 
-export const Introduction = ({ 
-  openAiKey, 
-  elevenLabsKey, 
+export const Introduction = ({
+  aiProvider,
+  llmApiKey,
+  llmModel,
+  elevenLabsKey,
   voiceProvider,
   elevenLabsParam,
   speechSynthesisParam,
-  onChangeAiKey, 
+  onChangeAiProvider,
+  onChangeLlmApiKey,
+  onChangeLlmModel,
   onChangeElevenLabsKey,
   onChangeVoiceProvider,
   onChangeElevenLabsVoice,
-  onChangeSpeechSynthesisParam
+  onChangeSpeechSynthesisParam,
 }: Props) => {
   const [opened, setOpened] = useState(true);
   const [elevenLabsVoices, setElevenLabsVoices] = useState<any[]>([]);
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  const handleAiKeyChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChangeAiKey(event.target.value);
-    },
-    [onChangeAiKey]
-  );
-
-  const handleElevenLabsKeyChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChangeElevenLabsKey(event.target.value);
-    },
-    [onChangeElevenLabsKey]
-  );
-
-  const handleVoiceProviderChange = (provider: VoiceProvider) => {
-    onChangeVoiceProvider(provider);
-    localStorage.setItem('voiceProvider', provider);
-  };
-
-  // Load ElevenLabs voices when API key is provided
+  // Load ElevenLabs voices when key changes
   useEffect(() => {
-    if (elevenLabsKey) {
-      fetch('https://api.elevenlabs.io/v1/voices', {
-        headers: {
-          'xi-api-key': elevenLabsKey
-        }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.voices) {
-            setElevenLabsVoices(data.voices);
-          }
-        })
-        .catch(err => console.error('Failed to load ElevenLabs voices:', err));
+    if (!elevenLabsKey) {
+      setElevenLabsVoices([]);
+      return;
     }
+    fetch("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": elevenLabsKey },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.voices) setElevenLabsVoices(data.voices);
+      })
+      .catch((err) => console.error("Failed to load ElevenLabs voices:", err));
   }, [elevenLabsKey]);
 
   // Load browser voices
   useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      setBrowserVoices(voices);
-    };
-    
-    loadVoices();
-    
+    const load = () => setBrowserVoices(window.speechSynthesis.getVoices());
+    load();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+        window.speechSynthesis.onvoiceschanged = load;
     }
   }, []);
 
   return opened ? (
-    <div className="absolute z-40 w-full h-full px-24 py-40  bg-black/30 font-M_PLUS_2">
+    <div className="absolute z-40 w-full h-full px-24 py-40 bg-black/30 font-M_PLUS_2">
       <div className="mx-auto my-auto max-w-3xl max-h-full p-24 overflow-auto bg-white rounded-16">
         <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary ">
-            About ChatVRM
+          <div className="my-8 font-bold typography-20 text-secondary">
+            About ChatVRM Setup
           </div>
           <div>
-            You can enjoy conversations with 3D characters using only a web browser using a microphone, text input, and speech synthesis. You can also change the character (VRM), set the personality, and adjust the voice.
+            Semua pengaturan di layar ini langsung diterapkan dan otomatis tersimpan. You can adjust the AI Provider, Voice Provider, and other settings below to start the conversation.
           </div>
         </div>
+        
+        <div className="my-24">
+          <div className="my-8 font-bold typography-20 text-secondary">
+            AI Provider
+          </div>
+          <div className="my-16">
+            Pilih endpoint LLM yang akan dipakai untuk chat.
+          </div>
+          <div className="my-8 flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                name="ai-provider" 
+                value="openrouter"
+                checked={aiProvider === "openrouter"}
+                onChange={() => onChangeAiProvider("openrouter")}
+              />
+              <span>OpenRouter (Streaming, choice luas)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer ml-16">
+              <input 
+                type="radio" 
+                name="ai-provider" 
+                value="apipedia"
+                checked={aiProvider === "apipedia"}
+                onChange={() => onChangeAiProvider("apipedia")}
+              />
+              <span>APIPedia (OpenAPI-compatible)</span>
+            </label>
+          </div>
+          
+          <div className="my-16">
+            <div className="font-bold mb-4">LLM API Key</div>
+            <input
+              type="text"
+              placeholder={aiProvider === "apipedia" ? "APIPedia API key" : "OpenRouter API key"}
+              value={llmApiKey}
+              onChange={(e) => onChangeLlmApiKey(e.target.value)}
+              className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+            />
+          </div>
+
+          <div className="my-16">
+            <div className="font-bold mb-4">LLM Model</div>
+            <input
+              type="text"
+              placeholder={aiProvider === "apipedia" ? DEFAULT_APIPEDIA_MODEL : DEFAULT_OPENROUTER_MODEL}
+              value={llmModel}
+              onChange={(e) => onChangeLlmModel(e.target.value)}
+              className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis font-mono"
+            />
+            <div className="text-sm text-gray-500 mt-2">
+              {aiProvider === "apipedia" 
+                ? "Contoh: model APIPedia yang Anda aktifkan." 
+                : "Contoh: google/gemini-2.5-flash-lite"}
+            </div>
+          </div>
+        </div>
+
+        <div className="my-24">
+          <div className="my-8 font-bold typography-20 text-secondary">
+            Voice Output
+          </div>
+          <div className="my-16">
+            Pilih apakah karakter berbicara lewat ElevenLabs atau suara browser.
+          </div>
+          <div className="my-8 flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                name="voice-provider" 
+                value="elevenlabs"
+                checked={voiceProvider === "elevenlabs"}
+                onChange={() => onChangeVoiceProvider("elevenlabs")}
+              />
+              <span>ElevenLabs (Lebih natural)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer ml-16">
+              <input 
+                type="radio" 
+                name="voice-provider" 
+                value="speechSynthesis"
+                checked={voiceProvider === "speechSynthesis"}
+                onChange={() => onChangeVoiceProvider("speechSynthesis")}
+              />
+              <span>Browser Speech (Bawaan browser/OS)</span>
+            </label>
+          </div>
+
+          {voiceProvider === "elevenlabs" ? (
+            <>
+              <div className="my-16">
+                <div className="font-bold mb-4">ElevenLabs API Key</div>
+                <input
+                  type="text"
+                  placeholder="ElevenLabs API key"
+                  value={elevenLabsKey}
+                  onChange={(e) => onChangeElevenLabsKey(e.target.value)}
+                  className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
+                />
+              </div>
+              <div className="my-16">
+                <div className="font-bold mb-4">Voice</div>
+                <div className="my-4">
+                  <select 
+                    className="h-40 px-8 w-full bg-surface3 hover:bg-surface3-hover rounded-4"
+                    value={elevenLabsParam.voiceId}
+                    onChange={(e) => onChangeElevenLabsVoice(e.target.value)}
+                  >
+                    <option value="">Pilih voice...</option>
+                    {elevenLabsVoices.map((v) => (
+                      <option key={v.voice_id} value={v.voice_id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="my-16">
+                <div className="font-bold mb-4">Browser Voice</div>
+                <div className="my-4">
+                  <select 
+                    className="h-40 px-8 w-full bg-surface3 hover:bg-surface3-hover rounded-4"
+                    value={speechSynthesisParam.voiceName}
+                    onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, voiceName: e.target.value })}
+                  >
+                    <option value="">Pilih voice browser...</option>
+                    {browserVoices.map((v) => (
+                      <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="my-16">
+                <div className="font-bold mb-4">Pitch ({speechSynthesisParam.pitch.toFixed(1)})</div>
+                <input
+                  type="range"
+                  min="0.5" max="2" step="0.1"
+                  value={speechSynthesisParam.pitch}
+                  onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, pitch: parseFloat(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              <div className="my-16">
+                <div className="font-bold mb-4">Speed ({speechSynthesisParam.rate.toFixed(1)}x)</div>
+                <input
+                  type="range"
+                  min="0.5" max="2" step="0.1"
+                  value={speechSynthesisParam.rate}
+                  onChange={(e) => onChangeSpeechSynthesisParam({ ...speechSynthesisParam, rate: parseFloat(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="my-24">
           <div className="my-8 font-bold typography-20 text-secondary">
             Technology
           </div>
           <div>
-            <Link
-              url={"https://github.com/pixiv/three-vrm"}
-              label={"@pixiv/three-vrm"}
-            />&nbsp;
-            is used for displaying and manipulating 3D models,
-            &nbsp;<Link
-              url={
-                "https://openrouter.ai/"
-              }
-              label={"OpenRouter"}
-            />&nbsp;
-            is used for LLM access, and
-            &nbsp;<Link url={"https://beta.elevenlabs.io/"} label={"ElevenLabs"} />&nbsp;
-            is used for text to speech (alternatively, you can use browser speech synthesis).
+            <Link url="https://github.com/pixiv/three-vrm" label="@pixiv/three-vrm" />{" "}
+            digunakan untuk avatar 3D, OpenRouter atau APIPedia untuk akses LLM, dan{" "}
+            <Link url="https://beta.elevenlabs.io/" label="ElevenLabs" /> untuk
+            text-to-speech.
           </div>
           <div className="my-16">
-            The source code for this demo is available on GitHub. Feel free to experiment with changes and modifications!
-            <br />
-            Repository:
-            &nbsp;<Link
-              url={"https://github.com/Cloud-Dark/ChatVRM"}
-              label={"https://github.com/Cloud-Dark/ChatVRM"}
+            Repository:{" "}
+            <Link
+              url="https://github.com/Cloud-Dark/ChatVRM"
+              label="https://github.com/Cloud-Dark/ChatVRM"
             />
           </div>
         </div>
 
         <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            Precautions for use
-          </div>
-          <div>
-            Do not intentionally induce discriminatory or violent remarks, or remarks that demean a specific person. Also, when replacing characters using a VRM model, please follow the model&apos;s terms of use.
-          </div>
-        </div>
-
-        <div className="my-24">
-          <div className="my-8 font-bold typography-20 text-secondary">
-            Voice Provider
-          </div>
-          <div className="my-16">
-            Choose your preferred text-to-speech provider:
-          </div>
-          <div className="my-8 flex flex-col gap-8">
-            <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
-              <input
-                type="radio"
-                name="voiceProvider"
-                value="elevenlabs"
-                checked={voiceProvider === "elevenlabs"}
-                onChange={() => handleVoiceProviderChange("elevenlabs")}
-                className="w-16 h-16"
-              />
-              <div>
-                <span className="font-bold">ElevenLabs</span>
-                <div className="text-sm text-gray-600">
-                  High-quality AI voices (requires API key)
-                </div>
-              </div>
-            </label>
-            <label className="flex items-center gap-8 cursor-pointer p-8 rounded-8 border-2 border-solid border-gray-300 hover:border-secondary">
-              <input
-                type="radio"
-                name="voiceProvider"
-                value="speechSynthesis"
-                checked={voiceProvider === "speechSynthesis"}
-                onChange={() => handleVoiceProviderChange("speechSynthesis")}
-                className="w-16 h-16"
-              />
-              <div>
-                <span className="font-bold">Browser Speech Synthesis</span>
-                <div className="text-sm text-gray-600">
-                  Built-in browser voices (no API key needed)
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        {voiceProvider === "elevenlabs" && (
-          <div className="my-24">
-            <div className="my-8 font-bold typography-20 text-secondary">
-              ElevenLabs API Key
-            </div>
-            <input
-              type="text"
-              placeholder="ElevenLabs API key"
-              value={elevenLabsKey}
-              onChange={handleElevenLabsKeyChange}
-              className="my-4 px-16 py-8 w-full h-40 bg-surface3 hover:bg-surface3-hover rounded-4 text-ellipsis"
-            ></input>
-            <div className="my-16">
-              Enter your ElevenLabs API key to enable text to speech. You can get an API key at the&nbsp;
-              <Link
-                url="https://beta.elevenlabs.io/"
-                label="ElevenLabs website"
-              />.
-            </div>
-            
-            {elevenLabsKey && elevenLabsVoices.length > 0 && (
-              <div className="my-16">
-                <div className="my-8 font-bold typography-16">Select Voice</div>
-                <Select2Dropdown
-                  options={elevenLabsVoices.map((voice) => ({
-                    id: voice.voice_id,
-                    text: voice.name,
-                  }))}
-                  value={elevenLabsParam.voiceId}
-                  onChange={onChangeElevenLabsVoice}
-                  placeholder="Search and select a voice..."
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {voiceProvider === "speechSynthesis" && (
-          <div className="my-24">
-            <div className="my-8 font-bold typography-20 text-secondary">
-              Browser Speech Synthesis
-            </div>
-            <div className="my-8 p-16 bg-surface1 rounded-8">
-              ✓ No API key required<br/>
-              ✓ Uses your browser&apos;s built-in speech synthesis<br/>
-              ✓ Works offline (after initial page load)<br/>
-              ✓ Voice quality depends on your operating system
-            </div>
-            
-            {browserVoices.length > 0 && (
-              <div className="my-16">
-                <div className="my-8 font-bold typography-16">Select Voice</div>
-                <Select2Dropdown
-                  options={browserVoices.map((voice) => ({
-                    id: voice.name,
-                    text: `${voice.name} (${voice.lang})`,
-                  }))}
-                  value={speechSynthesisParam.voiceName}
-                  onChange={(voiceName) => {
-                    const newParam = {
-                      ...speechSynthesisParam,
-                      voiceName
-                    };
-                    onChangeSpeechSynthesisParam(newParam);
-                  }}
-                  placeholder="Search and select a voice..."
-                />
-              </div>
-            )}
-            
-            <div className="my-16">
-              <div className="my-8 font-bold typography-16">Pitch: {speechSynthesisParam.pitch.toFixed(1)}</div>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={speechSynthesisParam.pitch}
-                onChange={(e) => {
-                  const newParam = {
-                    ...speechSynthesisParam,
-                    pitch: parseFloat(e.target.value)
-                  };
-                  onChangeSpeechSynthesisParam(newParam);
-                }}
-                className="w-full"
-              />
-            </div>
-            
-            <div className="my-16">
-              <div className="my-8 font-bold typography-16">Speed: {speechSynthesisParam.rate.toFixed(1)}x</div>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={speechSynthesisParam.rate}
-                onChange={(e) => {
-                  const newParam = {
-                    ...speechSynthesisParam,
-                    rate: parseFloat(e.target.value)
-                  };
-                  onChangeSpeechSynthesisParam(newParam);
-                }}
-                className="w-full"
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="my-24">
           <button
-            onClick={() => {
-              setOpened(false);
-            }}
+            onClick={() => setOpened(false)}
             className="font-bold bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled text-white px-24 py-8 rounded-oval"
           >
             Start

@@ -8,9 +8,13 @@ import { Settings } from "./settings";
 import { ViewerContext } from "@/features/vrmViewer/viewerContext";
 import { AssistantText } from "./assistantText";
 import { SpeechSynthesisParam } from "@/features/constants/speechSynthesisParam";
+import { AIProvider } from "@/features/chat/providers";
 
 type Props = {
   openAiKey: string;
+  aiProvider: AIProvider;
+  llmApiKey: string;
+  llmModel: string;
   elevenLabsKey: string;
   systemPrompt: string;
   chatLog: Message[];
@@ -21,6 +25,9 @@ type Props = {
   speechSynthesisParam: SpeechSynthesisParam;
   onChangeSystemPrompt: (systemPrompt: string) => void;
   onChangeAiKey: (key: string) => void;
+  onChangeAiProvider: (provider: AIProvider) => void;
+  onChangeLlmApiKey: (key: string) => void;
+  onChangeLlmModel: (model: string) => void;
   onChangeElevenLabsKey: (key: string) => void;
   onChangeChatLog: (index: number, text: string) => void;
   onChangeElevenLabsParam: (param: ElevenLabsParam) => void;
@@ -38,6 +45,9 @@ type Props = {
 };
 export const Menu = ({
   openAiKey,
+  aiProvider,
+  llmApiKey,
+  llmModel,
   elevenLabsKey,
   openRouterKey,
   systemPrompt,
@@ -49,6 +59,9 @@ export const Menu = ({
   speechSynthesisParam,
   onChangeSystemPrompt,
   onChangeAiKey,
+  onChangeAiProvider,
+  onChangeLlmApiKey,
+  onChangeLlmModel,
   onChangeElevenLabsKey,
   onChangeChatLog,
   onChangeElevenLabsParam,
@@ -94,6 +107,20 @@ export const Menu = ({
       onChangeElevenLabsKey(event.target.value);
     },
     [onChangeElevenLabsKey]
+  );
+
+  const handleLlmApiKeyChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onChangeLlmApiKey(event.target.value);
+    },
+    [onChangeLlmApiKey]
+  );
+
+  const handleLlmModelChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onChangeLlmModel(event.target.value);
+    },
+    [onChangeLlmModel]
   );
 
   const handleElevenLabsVoiceChange = useCallback(
@@ -175,7 +202,10 @@ export const Menu = ({
       {showChatLog && <ChatLog messages={chatLog} />}
       {showSettings && (
         <Settings
-          openAiKey={openAiKey}
+
+          aiProvider={aiProvider}
+          llmApiKey={llmApiKey}
+          llmModel={llmModel}
           elevenLabsKey={elevenLabsKey}
           openRouterKey={openRouterKey}
           elevenLabsParam={elevenLabsParam}
@@ -185,7 +215,10 @@ export const Menu = ({
           voiceProvider={voiceProvider}
           speechSynthesisParam={speechSynthesisParam}
           onClickClose={() => setShowSettings(false)}
-          onChangeAiKey={handleAiKeyChange}
+
+          onChangeAiProvider={onChangeAiProvider}
+          onChangeLlmApiKey={handleLlmApiKeyChange}
+          onChangeLlmModel={handleLlmModelChange}
           onChangeElevenLabsKey={handleElevenLabsKeyChange}
           onChangeElevenLabsVoice={handleElevenLabsVoiceChange}
           onChangeSystemPrompt={handleChangeSystemPrompt}

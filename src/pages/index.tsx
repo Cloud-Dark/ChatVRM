@@ -21,6 +21,7 @@ import { buildUrl } from "@/utils/buildUrl";
 import { websocketService } from '../services/websocketService';
 import { MessageMiddleOut } from "@/features/messages/messageMiddleOut";
 import { SpeechSynthesisParam, DEFAULT_SPEECH_SYNTHESIS_PARAM } from "@/features/constants/speechSynthesisParam";
+import { AIProvider, DEFAULT_OPENROUTER_MODEL, getDefaultModel } from "@/features/chat/providers";
 
 type VoiceProvider = "elevenlabs" | "speechSynthesis";
 
@@ -61,6 +62,9 @@ export default function Home() {
   const [voiceProvider, setVoiceProvider] = useState<VoiceProvider>('elevenlabs');
   const [speechSynthesisParam, setSpeechSynthesisParam] = useState<SpeechSynthesisParam>(DEFAULT_SPEECH_SYNTHESIS_PARAM);
   const [openRouterKey, setOpenRouterKey] = useState<string>('');
+  const [aiProvider, setAiProvider] = useState<AIProvider>('openrouter');
+  const [llmApiKey, setLlmApiKey] = useState<string>('');
+  const [llmModel, setLlmModel] = useState<string>(DEFAULT_OPENROUTER_MODEL);
 
   useEffect(() => {
     if (window.localStorage.getItem("chatVRMParams")) {
@@ -68,8 +72,18 @@ export default function Home() {
         window.localStorage.getItem("chatVRMParams") as string
       );
       setSystemPrompt(params.systemPrompt);
-      setElevenLabsParam(params.elevenLabsParam);
+      if (params.elevenLabsParam) {
+        setElevenLabsParam(params.elevenLabsParam);
+      }
       setChatLog(params.chatLog);
+    }
+    const savedElevenLabsParam = localStorage.getItem("elevenLabsParam");
+    if (savedElevenLabsParam) {
+      try {
+        setElevenLabsParam(JSON.parse(savedElevenLabsParam));
+      } catch (e) {
+        console.error("Failed to parse elevenLabsParam from localStorage");
+      }
     }
     if (window.localStorage.getItem("elevenLabsKey")) {
       const key = window.localStorage.getItem("elevenLabsKey") as string;
@@ -79,6 +93,32 @@ export default function Home() {
     const savedOpenRouterKey = localStorage.getItem('openRouterKey');
     if (savedOpenRouterKey) {
       setOpenRouterKey(savedOpenRouterKey);
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const apipediaQuery = urlParams.get('apipedia');
+
+    if (apipediaQuery) {
+      setAiProvider('apipedia');
+      setLlmApiKey(apipediaQuery);
+      localStorage.setItem('aiProvider', 'apipedia');
+      localStorage.setItem('llmApiKey', apipediaQuery);
+      
+      // Optionally clean up the URL without a reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    } else {
+      const savedAiProvider = localStorage.getItem('aiProvider');
+      if (savedAiProvider === 'openrouter' || savedAiProvider === 'apipedia') {
+        setAiProvider(savedAiProvider);
+      }
+      const savedLlmApiKey = localStorage.getItem('llmApiKey');
+      if (savedLlmApiKey) {
+        setLlmApiKey(savedLlmApiKey);
+      }
+    }
+    const savedLlmModel = localStorage.getItem('llmModel');
+    if (savedLlmModel) {
+      setLlmModel(savedLlmModel);
     }
     const savedBackground = localStorage.getItem('backgroundImage');
     if (savedBackground) {
@@ -101,17 +141,33 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    process.nextTick(() => {
-      window.localStorage.setItem(
-        "chatVRMParams",
-        JSON.stringify({ systemPrompt, elevenLabsParam, chatLog })
-      )
-
-      // store separately to be backward compatible with local storage data
-      window.localStorage.setItem("elevenLabsKey", elevenLabsKey);
-    }
+    window.localStorage.setItem(
+      "chatVRMParams",
+      JSON.stringify({ systemPrompt, elevenLabsParam, chatLog })
     );
   }, [systemPrompt, elevenLabsParam, chatLog]);
+
+  useEffect(() => {
+    window.localStorage.setItem("elevenLabsKey", elevenLabsKey);
+  }, [elevenLabsKey]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "elevenLabsParam",
+      JSON.stringify(elevenLabsParam)
+    );
+  }, [elevenLabsParam]);
+
+  useEffect(() => {
+    window.localStorage.setItem("voiceProvider", voiceProvider);
+  }, [voiceProvider]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "speechSynthesisParam",
+      JSON.stringify(speechSynthesisParam)
+    );
+  }, [speechSynthesisParam]);
 
   useEffect(() => {
     if (backgroundImage) {
@@ -202,13 +258,15 @@ export default function Home() {
         ...messageLog,
       ]);
 
-      let localOpenRouterKey = openRouterKey;
-      if (!localOpenRouterKey) {
-        // fallback to free key for users to try things out
-        localOpenRouterKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY!;
+      let localApiKey = llmApiKey;
+      if (!localApiKey && aiProvider === "openrouter") {
+        localApiKey = openRouterKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
+      }
+      if (!localApiKey && aiProvider === "apipedia") {
+        localApiKey = process.env.NEXT_PUBLIC_APIPEDIA_API_KEY || "";
       }
 
-      const stream = await getChatResponseStream(processedMessages, openAiKey, localOpenRouterKey).catch(
+      const stream = await getChatResponseStream(processedMessages, aiProvider, localApiKey, llmModel).catch(
         (e) => {
           console.error(e);
           return null;
@@ -296,7 +354,7 @@ export default function Home() {
       setChatLog(messageLogAssistant);
       setChatProcessing(false);
     },
-    [systemPrompt, chatLog, handleSpeakAi, openAiKey, elevenLabsKey, elevenLabsParam, openRouterKey, voiceProvider]
+    [systemPrompt, chatLog, handleSpeakAi, aiProvider, llmApiKey, llmModel, openAiKey, elevenLabsKey, elevenLabsParam, openRouterKey, voiceProvider, koeiroParam, speechSynthesisParam]
   );
 
   const handleTokensUpdate = useCallback((tokens: any) => {
@@ -335,6 +393,32 @@ export default function Home() {
     localStorage.setItem('openRouterKey', newKey);
   };
 
+  const handleAiProviderChange = useCallback((provider: AIProvider) => {
+    setAiProvider(provider);
+    localStorage.setItem('aiProvider', provider);
+    setLlmModel((currentModel) => {
+      const previousDefault = getDefaultModel(
+        provider === "openrouter" ? "apipedia" : "openrouter"
+      );
+      const nextModel =
+        !currentModel || currentModel === previousDefault
+          ? getDefaultModel(provider)
+          : currentModel;
+      localStorage.setItem('llmModel', nextModel);
+      return nextModel;
+    });
+  }, []);
+
+  const handleLlmApiKeyChange = useCallback((value: string) => {
+    setLlmApiKey(value);
+    localStorage.setItem('llmApiKey', value);
+  }, []);
+
+  const handleLlmModelChange = useCallback((value: string) => {
+    setLlmModel(value);
+    localStorage.setItem('llmModel', value);
+  }, []);
+
   const handleElevenLabsVoiceChange = useCallback(
     (voiceId: string) => {
       setElevenLabsParam({ voiceId });
@@ -355,7 +439,13 @@ export default function Home() {
       <Meta />
       <Introduction
         openAiKey={openAiKey}
+        aiProvider={aiProvider}
+        llmApiKey={llmApiKey}
+        llmModel={llmModel}
         onChangeAiKey={setOpenAiKey}
+        onChangeAiProvider={handleAiProviderChange}
+        onChangeLlmApiKey={handleLlmApiKeyChange}
+        onChangeLlmModel={handleLlmModelChange}
         elevenLabsKey={elevenLabsKey}
         onChangeElevenLabsKey={setElevenLabsKey}
         voiceProvider={voiceProvider}
@@ -372,6 +462,9 @@ export default function Home() {
       />
       <Menu
         openAiKey={openAiKey}
+        aiProvider={aiProvider}
+        llmApiKey={llmApiKey}
+        llmModel={llmModel}
         elevenLabsKey={elevenLabsKey}
         openRouterKey={openRouterKey}
         systemPrompt={systemPrompt}
@@ -382,6 +475,9 @@ export default function Home() {
         voiceProvider={voiceProvider}
         speechSynthesisParam={speechSynthesisParam}
         onChangeAiKey={setOpenAiKey}
+        onChangeAiProvider={handleAiProviderChange}
+        onChangeLlmApiKey={handleLlmApiKeyChange}
+        onChangeLlmModel={handleLlmModelChange}
         onChangeElevenLabsKey={setElevenLabsKey}
         onChangeSystemPrompt={setSystemPrompt}
         onChangeChatLog={handleChangeChatLog}
