@@ -29,7 +29,6 @@ export const MessageInput = ({
               iconName="24/Microphone"
               className="bg-secondary hover:bg-secondary-hover active:bg-secondary-press disabled:bg-secondary-disabled"
               isProcessing={isMicRecording}
-              disabled={isChatProcessing}
               onClick={onClickMicButton}
             />
             <input

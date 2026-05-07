@@ -23,6 +23,9 @@ export class WebSocketService extends EventEmitter {
     private llmCallback: LLMCallback | null = null;
     private reconnectionPromise: Promise<void> | null = null;
     private isReconnecting: boolean = false;
+    private reconnectAttempts: number = 0;
+    private readonly MAX_RECONNECT_ATTEMPTS = 5;
+    private readonly RECONNECT_INTERVAL = 3000;
     
     // New state management properties
     private messageQueue: ChatMessage[] = [];
@@ -64,6 +67,15 @@ export class WebSocketService extends EventEmitter {
         // Only emit connection change if we're not in the middle of reconnecting
         if (!this.isReconnecting) {
             this.emit('connectionChange', false);
+            
+            // Attempt to reconnect if we have a token and haven't exceeded max attempts
+            if (this.currentToken && this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+                console.log(`WebSocket closed. Attempting to reconnect (${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})...`);
+                setTimeout(() => {
+                    this.reconnectAttempts++;
+                    this.connect(this.currentToken!);
+                }, this.RECONNECT_INTERVAL);
+            }
         }
     };
 
@@ -75,6 +87,7 @@ export class WebSocketService extends EventEmitter {
     private handleWebSocketOpen = () => {
         console.log('WebSocket connection established');
         this.emit('connectionChange', true);
+        this.reconnectAttempts = 0; // Reset attempts on successful connection
     };
 
     private setupEventHandlers() {

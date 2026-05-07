@@ -4,7 +4,7 @@ interface RestreamTokens {
 }
 
 export async function refreshAccessToken(refreshToken: string): Promise<RestreamTokens> {
-    const response = await fetch('https://restream-token-fetcher.vercel.app/api/auth/refresh', {
+    const response = await fetch('http://localhost:3000/api/auth/refresh', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
